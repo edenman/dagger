@@ -23,6 +23,9 @@ import static dagger.internal.codegen.GeneratedComponentModel.MethodSpecKind.MEM
 import static dagger.internal.codegen.Util.reentrantComputeIfAbsent;
 import static javax.lang.model.element.Modifier.PRIVATE;
 
+import com.google.auto.common.MoreTypes;
+import com.google.common.base.Equivalence;
+import com.google.common.base.Joiner;
 import com.google.common.collect.ImmutableSet;
 import com.squareup.javapoet.ClassName;
 import com.squareup.javapoet.CodeBlock;
@@ -32,11 +35,13 @@ import com.squareup.javapoet.TypeName;
 import dagger.internal.codegen.InjectionMethods.InjectionSiteMethod;
 import dagger.internal.codegen.MembersInjectionBinding.InjectionSite;
 import dagger.model.Key;
+import java.lang.StringBuilder;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import javax.lang.model.element.Name;
 import javax.lang.model.element.TypeElement;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.util.Types;
 
 /** Manages the member injection methods for a component. */
 final class MembersInjectionMethods {
@@ -73,8 +78,20 @@ final class MembersInjectionMethods {
     ResolvedBindings resolvedBindings =
         bindingsMap.getOrDefault(key, graph.contributionBindings().get(key));
     if (resolvedBindings == null) {
+      StringBuilder allBingingsStr = new StringBuilder();
+      for (Key daKey : bindingsMap.keySet()) {
+        allBingingsStr.append("\n Key.hashCode: " + daKey.hashCode() + " vs " + key.hashCode());
+        allBingingsStr.append("\n Key.equals: " + daKey.equals(key));
+        allBingingsStr.append("\n type: " + daKey.type() + " vs " + key.type() + " TypeMirror.equals? " + daKey.type().equals(key.type()) + " ");
+        allBingingsStr.append("\n qualifier: " + daKey.qualifier() + " vs " + key.qualifier() + " qualifier.equals? " + daKey.qualifier().equals(key.qualifier()) + " ");
+        allBingingsStr.append("\n multibindingContributionIdentifier: " + daKey.multibindingContributionIdentifier() + " vs " + key.multibindingContributionIdentifier() + " multibindingContributionIdentifier.equals? " + daKey.multibindingContributionIdentifier().equals(key.multibindingContributionIdentifier()) + " ");
+        Equivalence.Wrapper<TypeMirror> wrappedDaKey = MoreTypes.equivalence().wrap(daKey.type());
+        Equivalence.Wrapper<TypeMirror> wrappedKey = MoreTypes.equivalence().wrap(key.type());
+        allBingingsStr.append("\n wrappedType: " + wrappedDaKey + " vs " + wrappedKey + " Equivalence.Wrapper.equals? " + wrappedDaKey.equals(wrappedKey));
+        allBingingsStr.append("\n wrappedType.hashCode: " + wrappedDaKey.hashCode() + " vs " + wrappedKey.hashCode());
+      }
       throw new IllegalStateException(
-          "Unable to resolve binding for " + key + " with " + bindingsMap.size() + " bindings");
+          "Unable to resolve binding for " + key + " with " + bindingsMap.size() + " bindings: " + allBingingsStr.toString());
     }
     Binding binding = resolvedBindings.binding();
     TypeMirror keyType = binding.key().type();
